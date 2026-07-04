@@ -102,14 +102,15 @@ export const generateMockData = (cityName) => {
     let icon = weatherIcon;
     
     // Add variations for other days
-    if (dayOffset > 0 && i % 8 === 0) {
+    if (dayOffset > 0) {
       const condIndex = (weatherConditions.indexOf(weatherCondition) + dayOffset) % weatherConditions.length;
       cond = weatherConditions[condIndex];
       icon = weatherIcons[cond] || "01d";
-      // Adjust icon day/night indicator based on cycle
-      const isNight = i % 8 >= 5 || i % 8 === 0;
-      icon = icon.replace("d", isNight ? "n" : "d");
     }
+    
+    // Adjust icon day/night indicator based on cycle
+    const isNight = i % 8 >= 5 || i % 8 === 0;
+    icon = icon.replace("d", isNight ? "n" : "d");
 
     list.push({
       dt: startDt + i * 3 * 3600,

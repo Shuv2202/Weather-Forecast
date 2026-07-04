@@ -1,17 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  Sun,
-  Cloud,
-  Droplets,
-  Wind,
-  Sunrise,
-  Sunset,
-  ThermometerSun,
-  ThermometerSnowflake,
   Search,
-  Moon,
-  CloudRain,
-  CloudSnow,
+  Thermometer,
 } from "lucide-react";
 import moment from "moment";
 import { generateMockData } from "./mockData";
@@ -28,12 +18,18 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
 
   // Custom API configuration & demo mode states
   const [isDemoMode, setIsDemoMode] = useState(() => {
+    // If an API key exists (in env or local storage), prioritize Live Mode
+    const openWeatherKey = process.env.REACT_APP_API_KEY || localStorage.getItem("REACT_APP_API_KEY");
+    if (openWeatherKey) {
+      localStorage.setItem("isDemoMode", "false");
+      return false;
+    }
     const storedDemo = localStorage.getItem("isDemoMode");
     if (storedDemo !== null) {
       return storedDemo === "true";
     }
-    // If no saved preference and no env key is set, default to demo mode
-    return !process.env.REACT_APP_API_KEY;
+    // Default to demo mode if no key is set
+    return true;
   });
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem("REACT_APP_API_KEY") || "");
@@ -45,8 +41,7 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     setErrorMsg("");
 
     // If Demo Mode is active, generate and set mock data
-    const isDemo = localStorage.getItem("isDemoMode") === "true" || isDemoMode;
-    if (isDemo) {
+    if (isDemoMode) {
       const mockPayload = generateMockData(cityName);
       setData(mockPayload);
       setCityvalid(true);
@@ -154,25 +149,16 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     setCityvalid(true);
   };
 
-  // Function to map weather condition to Lucide icon with customizable stroke weights
-  const getWeatherIcon = (weather, strokeWidth = 1.5, className = "forecast-icon") => {
-    const desc = data?.list?.[0]?.weather?.[0]?.description?.toLowerCase() || "";
-    
-    // Map overcast clouds or standard rain/drizzle to CloudRain outline icon
-    if (weather === "Rain" || weather === "Drizzle" || desc.includes("overcast") || desc.includes("rain") || desc.includes("drizzle")) {
-      return <CloudRain className={className} strokeWidth={strokeWidth} />;
-    }
-    
-    switch (weather) {
-      case "Clear":
-        return <Sun className={className} strokeWidth={strokeWidth} />;
-      case "Clouds":
-        return <Cloud className={className} strokeWidth={strokeWidth} />;
-      case "Snow":
-        return <CloudSnow className={className} strokeWidth={strokeWidth} />;
-      default:
-        return <Cloud className={className} strokeWidth={strokeWidth} />; // Default to Cloud icon
-    }
+  // Function to map weather icon code to the public SVG icon image
+  const getWeatherIcon = (iconCode, className = "forecast-icon") => {
+    const icon = iconCode || "03d";
+    return (
+      <img
+        src={`icons/${icon}.svg`}
+        alt="Weather Icon"
+        className={className}
+      />
+    );
   };
 
   const getWeatherThemeClass = (condition) => {
@@ -259,8 +245,6 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
   const currentCondition = data ? data.list[0].weather[0].main : "Clear";
 
   // Solar parameters calculations
-  let isDay = true;
-  let timeText = "";
   let dt = 0;
   let sunrise = 0;
   let sunset = 0;
@@ -271,19 +255,6 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     sunrise = data.city.sunrise;
     sunset = data.city.sunset;
     timezone = data.city.timezone;
-    isDay = dt >= sunrise && dt <= sunset;
-
-    const remainingSeconds = isDay 
-      ? sunset - dt 
-      : (dt > sunset ? (sunrise + 86400) - dt : sunrise - dt);
-    
-    const duration = moment.duration(remainingSeconds * 1000);
-    const durationHours = Math.floor(duration.asHours());
-    const durationMinutes = duration.minutes();
-    
-    timeText = isDay 
-      ? `Sunset in ${durationHours}h ${durationMinutes}m` 
-      : `Sunrise in ${durationHours}h ${durationMinutes}m`;
   }
 
   return (
@@ -337,121 +308,144 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
               </div>
             </div>
 
-            {/* Responsive 3-Column Grid Layout */}
-            <div className="dashboard-grid">
-              
-              {/* Column 1: Main Weather Card */}
-              <div className="dashboard-col left-col">
-                <GlassCard className="primary-card">
-                  <div className="primary-card-content">
+            {/* 2-Row Horizontal Dashboard Layout */}
+            <div className="dashboard-layout">
+              {/* Row 1: Daily Forecast Header and Full-Width Glass Card */}
+              <div className="dashboard-section">
+                <h2 className="section-title">Daily Forcast</h2>
+                <GlassCard className="daily-forecast-card">
+                  
+                  {/* Left block: City, Date, Icon, Temperature, Description */}
+                  <div className="daily-left-content">
                     <div className="city-info">
                       <h1 className="city-name">{data.city.name}</h1>
                       <p className="date">
                         {moment
                           .utc(new Date().setTime(data.list[0].dt * 1000))
                           .add(data.city.timezone, "seconds")
-                          .format("dddd, MMMM Do YYYY")}
+                          .format("dddd, MMMM Do YYYY") + ","}
                       </p>
                     </div>
-
-                    <div className="current-weather">
-                      <div className="weather-main">
-                        <div className="weather-display">
-                          {getWeatherIcon(currentCondition, 1.2, "primary-weather-icon")}
-                          <div className="temperature-container">
-                            <h2 className="temperature">
-                              {data.list[0].main.temp.toFixed(1)}°C
-                            </h2>
-                            <p className="weather-description">
-                              {data.list[0].weather[0].description}
-                            </p>
-                            <div className="card-solar-countdown">
-                              {isDay ? (
-                                <Sun size={14} strokeWidth={1.5} className="solar-countdown-icon sun-spin" />
-                              ) : (
-                                <Moon size={14} strokeWidth={1.5} className="solar-countdown-icon moon-pulse" />
-                              )}
-                              {timeText}
-                            </div>
-                          </div>
+                    
+                    <div className="weather-display-row">
+                      <div className="weather-large-icon-wrapper">
+                        {getWeatherIcon(data.list[0].weather[0].icon, "large-weather-icon")}
+                      </div>
+                      
+                      <div className="temperature-info">
+                        <div className="temp-value-row">
+                          <h2 className="large-temp">
+                            {data.list[0].main.temp.toFixed(1)}
+                          </h2>
+                          <Thermometer size={32} strokeWidth={1.5} className="temp-thermometer-icon" />
+                          <span className="temp-degree-symbol">°</span>
                         </div>
+                        <p className="weather-desc-text">
+                          {data.list[0].weather[0].description}
+                        </p>
                       </div>
                     </div>
                   </div>
-                </GlassCard>
-              </div>
 
-              {/* Column 2: Details matrix card */}
-              <div className="dashboard-col center-col">
-                <GlassCard className="details-card-wrapper">
-                  <h3 className="forecast-title" style={{ marginBottom: "1.5rem" }}>Weather Details</h3>
-                  <div className="weather-details">
-                    {[
-                      {
-                        icon: <ThermometerSun className="detail-icon high-temp" strokeWidth={1.5} />,
-                        label: "High",
-                        value: `${data.list[0].main.temp_max.toFixed(1)}°C`,
-                      },
-                      {
-                        icon: <ThermometerSnowflake className="detail-icon low-temp" strokeWidth={1.5} />,
-                        label: "Low",
-                        value: `${data.list[0].main.temp_min.toFixed(1)}°C`,
-                      },
-                      {
-                        icon: <Wind className="detail-icon wind" strokeWidth={1.5} />,
-                        label: "Wind",
-                        value: `${data.list[0].wind.speed.toFixed(1)} km/h`,
-                      },
-                      {
-                        icon: <Droplets className="detail-icon humidity" strokeWidth={1.5} />,
-                        label: "Humidity",
-                        value: `${data.list[0].main.humidity}%`,
-                      },
-                      {
-                        icon: <Sunrise className="detail-icon sunrise" strokeWidth={1.5} />,
-                        label: "Sunrise",
-                        value: moment.utc(sunrise * 1000).add(timezone, "seconds").format("h:mm a"),
-                      },
-                      {
-                        icon: <Sunset className="detail-icon sunset" strokeWidth={1.5} />,
-                        label: "Sunset",
-                        value: moment.utc(sunset * 1000).add(timezone, "seconds").format("h:mm a"),
-                      },
-                    ].map((item, index) => (
-                      <div key={index} className="detail-card">
-                        <div className="detail-header">
-                          {item.icon}
-                          <span className="detail-label">{item.label}</span>
+                  {/* Vertical Divider */}
+                  <div className="vertical-divider"></div>
+
+                  {/* Right block: 2x3 Details Grid */}
+                  <div className="daily-right-content">
+                    <div className="details-grid-cols">
+                      
+                      {/* Col 1: High & Low */}
+                      <div className="details-grid-col">
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number">{data.list[0].main.temp_max.toFixed(1)}</span>
+                            <Thermometer size={18} strokeWidth={1.5} className="detail-therm-icon high-temp" />
+                            <span className="detail-degree">°</span>
+                          </div>
+                          <div className="detail-label">High</div>
                         </div>
-                        <div className="detail-value">{item.value}</div>
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number">{data.list[0].main.temp_min.toFixed(1)}</span>
+                            <Thermometer size={18} strokeWidth={1.5} className="detail-therm-icon low-temp" />
+                            <span className="detail-degree">°</span>
+                          </div>
+                          <div className="detail-label">Low</div>
+                        </div>
                       </div>
-                    ))}
+
+                      {/* Col 2: Wind Speed & Humidity */}
+                      <div className="details-grid-col">
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number">
+                              {Math.round(data.list[0].wind.speed).toString().padStart(2, '0')}
+                            </span>
+                            <span className="detail-unit">_km/h</span>
+                          </div>
+                          <div className="detail-label">Wind Speed</div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number">{data.list[0].main.humidity}</span>
+                            <span className="detail-unit">%</span>
+                          </div>
+                          <div className="detail-label">Humadity</div>
+                        </div>
+                      </div>
+
+                      {/* Col 3: Sunrise & Sunset */}
+                      <div className="details-grid-col">
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number-time">
+                              {moment.utc(sunrise * 1000).add(timezone, "seconds").format("h:mm a")}
+                            </span>
+                          </div>
+                          <div className="detail-label">Sunrise</div>
+                        </div>
+                        <div className="detail-item">
+                          <div className="detail-value-row">
+                            <span className="detail-number-time">
+                              {moment.utc(sunset * 1000).add(timezone, "seconds").format("h:mm a")}
+                            </span>
+                          </div>
+                          <div className="detail-label">Sunset</div>
+                        </div>
+                      </div>
+
+                    </div>
                   </div>
+
                 </GlassCard>
               </div>
 
-              {/* Column 3: 5-Day Forecast rows with range bars */}
-              <div className="dashboard-col right-col">
-                <GlassCard className="forecast-card-wrapper">
-                  <h3 className="forecast-title">5-Day Forecast</h3>
-                  <div className="forecast-list">
+              {/* Row 2: Five Days Forecast Header and Full-Width Glass Card */}
+              <div className="dashboard-section" style={{ marginTop: "2rem" }}>
+                <h2 className="section-title">Five Days Forecast</h2>
+                <GlassCard className="forecast-card-wrapper-full">
+                  <div className="forecast-columns-grid">
                     {[7, 15, 23, 31, 39].map((index) => {
                       const forecastItem = data.list[index];
                       return (
-                        <div className="forecast-row" key={index}>
-                          <div className="forecast-row-day">
-                            {moment(new Date().setTime(forecastItem.dt * 1000)).format("dddd")}
+                        <div className="forecast-column" key={index}>
+                          <div className="forecast-day-name">
+                            {moment(new Date().setTime(forecastItem.dt * 1000)).format("ddd")}
                           </div>
-                          <div className="forecast-row-icon-cond">
-                            {getWeatherIcon(forecastItem.weather[0].main, 1.5)}
-                            <span className="forecast-row-cond">{forecastItem.weather[0].main}</span>
+                          <div className="forecast-icon-centered">
+                            {getWeatherIcon(forecastItem.weather[0].icon, "forecast-icon-svg")}
                           </div>
-                          <div className="forecast-row-temp-range">
-                            <span className="forecast-row-temp-val">{forecastItem.main.temp_min.toFixed(0)}°</span>
-                            <div className="forecast-temp-bar-container">
-                              <div className="forecast-temp-bar" />
-                            </div>
-                            <span className="forecast-row-temp-val text-right">{forecastItem.main.temp_max.toFixed(0)}°</span>
+                          <div className="forecast-stat">
+                            Temp {forecastItem.main.temp.toFixed(1)} C°
+                          </div>
+                          <div className="forecast-stat">
+                            Feel like {forecastItem.main.feels_like.toFixed(1)} C°
+                          </div>
+                          <div className="forecast-stat">
+                            Moist {forecastItem.main.humidity} %
+                          </div>
+                          <div className="forecast-condition-name">
+                            {forecastItem.weather[0].description}
                           </div>
                         </div>
                       );
