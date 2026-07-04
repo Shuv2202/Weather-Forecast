@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import Maindata from "./Components/Maindata";
-/* eslint-disable-next-line no-unused-vars */
-import Search from "./Components/Search";
 
 function App() {
-  /* eslint-disable-next-line no-unused-vars */
   const [location, setLocation] = useState();
+  const [coords, setCoords] = useState(null);
   const [backgroundImageURL, setBackgroundImageURL] = useState("01n");
 
   const handle = (e) => {
@@ -15,20 +13,23 @@ function App() {
 
   useEffect(() => {
     async function getCity(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      // Capture coordinates so we can query OpenWeatherMap directly if reverse geocoding is unavailable
+      setCoords({ lat: latitude, lon: longitude });
+
       try {
         const GEOLOCATION_API_KEY = process.env.REACT_APP_GEO_API || localStorage.getItem('REACT_APP_GEO_API');
         if (!GEOLOCATION_API_KEY) {
-          console.warn("LocationIQ API key (REACT_APP_GEO_API) is not set. Skipping reverse geocoding.");
           return;
         }
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
         const response = await fetch(
           `https://us1.locationiq.com/v1/reverse?key=${GEOLOCATION_API_KEY}&lat=${latitude}&lon=${longitude}&format=json`
         );
         const json = await response.json();
-        if (json?.address?.city) {
-          setLocation(json.address.city);
+        const city = json?.address?.city || json?.address?.town || json?.address?.village;
+        if (city) {
+          setLocation(city);
         }
       } catch (error) {
         console.error("Error geocoding location:", error);
@@ -50,7 +51,7 @@ function App() {
         backgroundSize: "cover",
       }}
     >
-      <Maindata city={location} setBackgroundImageURL={handle} />
+      <Maindata city={location} coords={coords} setBackgroundImageURL={handle} />
     </div>
   );
 }

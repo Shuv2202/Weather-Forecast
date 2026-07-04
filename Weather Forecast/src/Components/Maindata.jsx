@@ -10,7 +10,7 @@ import SunPosition from "./SunPosition";
 import "../Componentstyle/Main.css";
 import GlassCard from "./GlassCard";
 
-const Maindata = ({ city, setBackgroundImageURL }) => {
+const Maindata = ({ city, coords, setBackgroundImageURL }) => {
   const [data, setData] = useState();
   /* eslint-disable-next-line no-unused-vars */
   const [cityvalid, setCityvalid] = useState(false);
@@ -40,11 +40,17 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     if (!cityName) cityName = "london";
     setErrorMsg("");
 
+    const isCoords = typeof cityName === "object" && cityName !== null;
+
     // If Demo Mode is active, generate and set mock data
     if (isDemoMode) {
-      const mockPayload = generateMockData(cityName);
+      const resolvedName = isCoords ? "Your Location" : cityName;
+      const mockPayload = generateMockData(resolvedName);
       setData(mockPayload);
       setCityvalid(true);
+      if (isCoords) {
+        setSearchValue("Your Location");
+      }
       return;
     }
 
@@ -56,16 +62,20 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     }
 
     try {
-      const response = await fetch(
-        `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${openWeatherKey}&units=metric&formatted=0`
-      );
+      let url = "";
+      if (isCoords) {
+        url = `https://api.openweathermap.org/data/2.5/forecast?lat=${cityName.lat}&lon=${cityName.lon}&appid=${openWeatherKey}&units=metric&formatted=0`;
+      } else {
+        url = `https://api.openweathermap.org/data/2.5/forecast?q=${cityName}&appid=${openWeatherKey}&units=metric&formatted=0`;
+      }
+      const response = await fetch(url);
 
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("Invalid OpenWeatherMap API Key (401). Please check your key configuration.");
         } else if (response.status === 404) {
           setCityvalid(false);
-          throw new Error(`City "${cityName}" not found.`);
+          throw new Error(`City "${isCoords ? "Location" : cityName}" not found.`);
         } else {
           throw new Error(`Failed to fetch weather data: Status ${response.status}`);
         }
@@ -75,6 +85,9 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
       if (actualData.city) {
         setCityvalid(true);
         setData(actualData);
+        if (isCoords) {
+          setSearchValue(actualData.city.name);
+        }
       } else {
         setCityvalid(false);
         setErrorMsg("Invalid data structure received from weather service.");
@@ -93,6 +106,8 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
     if (city) {
       Dweather(city);
       setSearchValue(city);
+    } else if (coords) {
+      Dweather(coords);
     } else {
       const hasKey = process.env.REACT_APP_API_KEY || localStorage.getItem("REACT_APP_API_KEY");
       const isDemo = localStorage.getItem("isDemoMode") === "true" || isDemoMode;
@@ -104,7 +119,7 @@ const Maindata = ({ city, setBackgroundImageURL }) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [city]);
+  }, [city, coords, isDemoMode]);
 
   useEffect(() => {
     if (data?.list?.[0]?.weather?.[0]?.icon) {
