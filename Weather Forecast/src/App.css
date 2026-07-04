@@ -1,0 +1,59 @@
+@media screen and (max-width: 768px) {
+  .mainpage {
+    /* height: 72rem !important; */
+    height: auto !important;
+  }
+
+}
+@media screen and (max-width: 1069px) {
+  .mainpage {
+    /* height: 100vh !important; */
+    height: auto !important;
+  }
+}
+
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.mainpage {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.mainpage::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  right: -40px;
+  bottom: -40px;
+  background-image: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(50px) brightness(0.55);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.mainpage > * {
+  position: relative;
+  z-index: 1;
+}
+.vd {
+  width: 40rem;
+  height: 80rem;
+  background-size: cover;
+}
+.searchComp {
+  display: flex;
+  backdrop-filter: blur(10px);
+  justify-content: center;
+  align-items: flex-end;
+  height: 15vh;
+  width: 100%;
+}
+

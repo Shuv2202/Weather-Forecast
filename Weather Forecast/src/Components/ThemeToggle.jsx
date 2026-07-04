@@ -1,0 +1,1 @@
+// ThemeToggle component removed as per user request; UI now locked to dark mode
