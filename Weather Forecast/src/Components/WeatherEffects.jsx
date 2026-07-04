@@ -11,11 +11,21 @@ const WeatherEffects = ({ condition }) => {
     let animationFrameId;
     const parent = canvas.parentElement;
 
+    let lastWidth = parent ? parent.clientWidth : 0;
+    let lastHeight = parent ? parent.clientHeight : 0;
+
     // Use ResizeObserver to keep canvas drawing dimensions in sync with parent dimensions
     const resizeObserver = new ResizeObserver(() => {
       if (parent) {
-        canvas.width = parent.clientWidth;
-        canvas.height = parent.clientHeight;
+        const w = parent.clientWidth;
+        const h = parent.clientHeight;
+        // Throttled resizing: ignore height shifts under 50px (e.g. mobile URL bar toggles)
+        if (Math.abs(w - lastWidth) > 5 || Math.abs(h - lastHeight) > 50) {
+          canvas.width = w;
+          canvas.height = h;
+          lastWidth = w;
+          lastHeight = h;
+        }
       }
     });
 
@@ -24,6 +34,8 @@ const WeatherEffects = ({ condition }) => {
       // Run once immediately
       canvas.width = parent.clientWidth;
       canvas.height = parent.clientHeight;
+      lastWidth = parent.clientWidth;
+      lastHeight = parent.clientHeight;
     }
 
     // Particle Classes
@@ -194,9 +206,10 @@ const WeatherEffects = ({ condition }) => {
       }
     }
 
-    // Initialize Particles based on condition
+    // Initialize Particles based on condition (scaled down on mobile for high scroll framerates)
+    const isMobile = window.innerWidth <= 768;
     const particles = [];
-    const particleCount = 60;
+    const particleCount = isMobile ? 25 : 60;
 
     const normalizedCond = condition ? condition.toLowerCase() : "";
 
@@ -205,23 +218,27 @@ const WeatherEffects = ({ condition }) => {
         particles.push(new RainDrop());
       }
     } else if (normalizedCond.includes("snow")) {
-      for (let i = 0; i < particleCount * 0.7; i++) {
+      for (let i = 0; i < Math.floor(particleCount * 0.7); i++) {
         particles.push(new SnowFlake());
       }
     } else if (normalizedCond.includes("cloud")) {
-      for (let i = 0; i < 5; i++) {
+      const cloudCount = isMobile ? 2 : 5;
+      const rainCount = isMobile ? 10 : 25;
+      for (let i = 0; i < cloudCount; i++) {
         particles.push(new CloudParticle());
       }
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < rainCount; i++) {
         particles.push(new RainDrop());
       }
     } else if (normalizedCond.includes("clear")) {
-      for (let i = 0; i < 4; i++) {
+      const waveCount = isMobile ? 2 : 4;
+      for (let i = 0; i < waveCount; i++) {
         particles.push(new LightWave());
       }
     } else {
       // Atmospheric (Mist, Fog, Wind)
-      for (let i = 0; i < 15; i++) {
+      const windCount = isMobile ? 6 : 15;
+      for (let i = 0; i < windCount; i++) {
         particles.push(new WindLine());
       }
     }
